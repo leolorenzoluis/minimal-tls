@@ -1,5 +1,4 @@
 # Minimal TLS
----
 Tianyi Jin, Cyrus Malekpour, Bhuvanesh Murali, Daniel Saha
 
 #### Problem
