@@ -4,7 +4,29 @@
 type ProtocolVersion = u16;
 type Random = [u8; 32];
 
-enum CipherSuite {
+// This is our list of valid TLS state machine states
+// https://tlswg.github.io/tls13-spec/#rfc.appendix.A.2
+
+#[derive(PartialEq)]
+pub enum TLSState {
+    Start,
+    RecievedClientHello,
+    Negotiated,
+    WaitEndOfEarlyData,
+    WaitFlight2,
+    WaitCert,
+    WaitCertificateVerify,
+    WaitFinished,
+    Connected
+}
+
+// This is a list of possible errors
+pub enum TLSError {
+    InvalidState,
+    InvalidMessage
+}
+
+pub enum CipherSuite {
     TLS_AES_128_GCM_SHA256 = 0x1301,
     TLS_AES_256_GCM_SHA384 = 0x1302,
     TLS_CHACHA20_POLY1305_SHA256 = 0x1303,
@@ -21,10 +43,10 @@ pub enum ContentType {
 }
 
 pub struct TLSPlaintext {
-    ctype : ContentType,
-    legacy_record_version : ProtocolVersion,
-    length : u16, // MUST not exceed 2^14 bytes, otherwise record_overflow error
-    fragment : Vec<u8>,
+    pub ctype : ContentType,
+    pub legacy_record_version : ProtocolVersion,
+    pub length : u16, // MUST not exceed 2^14 bytes, otherwise record_overflow error
+    pub fragment : Vec<u8>,
 }
 
 pub struct TLSInnerPlaintext {
