@@ -119,8 +119,27 @@ impl<'a> TLS_config<'a> {
 	}
 
 	fn process_ciphersuites(&mut self, data : &[u8]) -> Result<Vec<CipherSuite>, TLSError> {
-		Err(TLSError::InvalidState)
-	}
+        let mut ret : Vec<CipherSuite> = Vec::new();
+        let mut iter = data.iter();
+    
+        loop {
+            let first = iter.next();
+            if first.is_none() {
+                break
+            }
+            let first = first.unwrap();
+            let second = iter.next().unwrap();
+            ret.push(match ((*first as u16) << 8) | (*second as u16) {
+                0x1301 => CipherSuite::TLS_AES_128_GCM_SHA256,
+                0x1302 => CipherSuite::TLS_AES_256_GCM_SHA384,
+                0x1303 => CipherSuite::TLS_CHACHA20_POLY1305_SHA256,
+                0x1304 => CipherSuite::TLS_AES_128_CCM_SHA256,
+                0x1305 => CipherSuite::TLS_AES_128_CCM_8_SHA256,
+                _ => return Err(TLSError::InvalidHandshakeError)
+            });
+        }
+	    Ok(ret)
+    }
 	
 	fn process_extensions(&mut self, data : &[u8]) -> Result<Vec<Extension>, TLSError> {
 		Err(TLSError::InvalidState)
