@@ -152,12 +152,12 @@ pub struct Handshake {
 }
 
 pub struct ClientHello {
-    legacy_version : u16, // 0x0303,
-    random: Random,
-    legacy_session_id : Vec<u8>, // <0..32>
-    cipher_suites : Vec<CipherSuite>, // <2..2^16-2>,
-    legacy_compression_methods: [u8; 255],
-    extensions: Vec<Extension> // <8..2^16-2>
+    pub legacy_version : u16, // 0x0303,
+    pub random: Random,
+    pub legacy_session_id : Vec<u8>, // <0..32>
+    pub cipher_suites : Vec<CipherSuite>, // <2..2^16-2>,
+    pub legacy_compression_methods: Vec<u8>,
+    pub extensions: Vec<Extension> // <8..2^16-2>
 }
 
 pub struct ServerHello {

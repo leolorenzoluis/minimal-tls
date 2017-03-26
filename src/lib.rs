@@ -2,28 +2,31 @@ mod structures;
 
 use std::io::Read;
 use std::io::Write;
-use std::mem;
 
-use structures::{Random, ClientHello, CipherSuite, Handshake, ContentType, TLSPlaintext, TLSState, TLSError};
+use structures::{Random, ClientHello, CipherSuite, Extension, ContentType, TLSPlaintext, TLSState, TLSError};
 
 // Misc. functions
 pub fn bytes_to_u16(bytes : &[u8]) -> u16 {
 	((bytes[0] as u16) << 8) | (bytes[1] as u16)
 }
 
+// Each connection needs to have its own TLS_config object
 pub struct TLS_config<'a> {
 	reader : &'a mut Read,
 	writer : &'a mut Write,
+
 	state : TLSState,
 
 	// Cache any remaining bytes in a TLS record
 	recordcache: Vec<u8>
 }
 
-fn TLS_init<'a, R : Read, W : Write>(read : &'a mut R, write : &'a mut W) -> TLS_config<'a> {
+fn tls_init<'a, R : Read, W : Write>(read : &'a mut R, write : &'a mut W) -> TLS_config<'a> {
 	TLS_config{reader : read, writer : write, state : TLSState::Start, recordcache : Vec::new() }
 }
 
+#[allow(unused_variables)]
+#[allow(dead_code)]
 impl<'a> TLS_config<'a> {
 
 	fn get_next_tlsplaintext(&mut self) -> Result<TLSPlaintext, TLSError> {
@@ -31,14 +34,14 @@ impl<'a> TLS_config<'a> {
 		let mut buffer : [u8; 5] = [0; 5];
 		try!(self.reader.read_exact(&mut buffer).or(Err(TLSError::ReadError)));
 
-		// Match content type
+		// Match content type (is there a better way to do this in Rust stable?)
 		let contenttype : ContentType = match buffer[0] {
-			InvalidReserved => ContentType::InvalidReserved,
-			ChangeCipherSpecReserved => ContentType::ChangeCipherSpecReserved,
-			Alert => ContentType::Alert,
-			Handshake => ContentType::Handshake,
-			ApplicationData => ContentType::ApplicationData,
-			_ => return Err(TLSError::InvalidHandshakeError)
+			0  => ContentType::InvalidReserved,
+			20 => ContentType::ChangeCipherSpecReserved,
+			21 => ContentType::Alert,
+			22 => ContentType::Handshake,
+			23 => ContentType::ApplicationData,
+			_  => return Err(TLSError::InvalidHandshakeError)
 		};
 
 		// Match legacy protocol version
@@ -63,7 +66,21 @@ impl<'a> TLS_config<'a> {
 	fn process_ciphersuites(&mut self, data : &[u8]) -> Result<Vec<CipherSuite>, TLSError> {
 		Err(TLSError::InvalidState)
 	}
+	
+	fn process_extensions(&mut self, data : &[u8]) -> Result<Vec<Extension>, TLSError> {
+		Err(TLSError::InvalidState)
+	}
 
+	// FIXME: When this function checks for length, it should validate that the vector
+	// length is a multiple of the vector element size. Otherwise we could lose alignment
+	// in the fragment data
+
+    /*
+        FIXME: We don't handle fragmented ClientHello messages! Ideally, rather than reading
+        directly from the fragment field of a TLSPlaintext, we should use some helper method
+        with an offset and # of bytes to read. If offset > remaining_length, the helper
+        automatically tries to read another TLSPlaintext
+    */
 	fn read_clienthello(&mut self) -> Result<ClientHello, TLSError> {
 		// First check if we have any cached data from the last record
 		if self.recordcache.len() > 0 {
@@ -89,7 +106,7 @@ impl<'a> TLS_config<'a> {
 
 			// Legacy session ID can be 0-32 bytes
 			let lsi_length : usize = bytes_to_u16(&plaintext.fragment[34..36]) as usize;
-			if lsi_length < 0 || lsi_length > 32 {
+			if lsi_length > 32 {
 				return Err(TLSError::InvalidHandshakeError)
 			}
 
@@ -110,14 +127,43 @@ impl<'a> TLS_config<'a> {
 			// Process the list of ciphersuites -- in particular, minimal-TLS doesn't support the full list
 			let ciphersuites : Vec<CipherSuite> = try!(self.process_ciphersuites(&plaintext.fragment[curr_offset..(curr_offset+cslist_length)]));
 
-			// TODO: Read in legacy compression methods
+			let curr_offset = curr_offset + cslist_length;
 
-			// TODO: Read in client extensions
-			Err(TLSError::InvalidState)
+			// Read in legacy compression methods
+			// For TLS 1.3, this must be a vector with length one (1) containing a null byte
+			let comp_length = plaintext.fragment[curr_offset] as usize;
+
+			if comp_length != 1 {
+				return Err(TLSError::InvalidHandshakeError)
+			}
+
+			if plaintext.fragment[curr_offset+1] != 0x00 {
+				return Err(TLSError::InvalidHandshakeError)
+			}
+
+			let curr_offset = curr_offset + 2;
+
+			// Parse ClientHello extensions
+			let ext_length = bytes_to_u16(&plaintext.fragment[curr_offset..(curr_offset+2)]) as usize;
+			if ext_length < 8 || ext_length > 2^16-1 {
+				return Err(TLSError::InvalidHandshakeError)
+			}
+
+			let curr_offset = curr_offset + 2;
+
+			let extensions : Vec<Extension> = try!(self.process_extensions(&plaintext.fragment[curr_offset..(curr_offset+ext_length)]));
+
+            let curr_offset = curr_offset + ext_length;
+
+			Ok(ClientHello{
+                legacy_version: legacy_version,
+                random: random,
+                legacy_session_id: legacy_session_id,
+                cipher_suites: ciphersuites,
+                legacy_compression_methods: vec![0],
+                extensions: extensions
+            })
 		}
-
-		// TODO: Actually parse the handshake object here, don't just return a TLSPlaintext
-
 	}
 
 	fn transition(&mut self) -> Result<&TLS_config, TLSError> {
