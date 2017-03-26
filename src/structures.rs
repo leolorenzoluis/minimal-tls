@@ -1,8 +1,8 @@
 #[allow(dead_code)]
 #[allow(unused_parens)]
 
-type ProtocolVersion = u16;
-type Random = [u8; 32];
+pub type ProtocolVersion = u16;
+pub type Random = [u8; 32];
 
 // This is our list of valid TLS state machine states
 // https://tlswg.github.io/tls13-spec/#rfc.appendix.A.2
@@ -23,7 +23,9 @@ pub enum TLSState {
 // This is a list of possible errors
 pub enum TLSError {
     InvalidState,
-    InvalidMessage
+    InvalidMessage,
+    ReadError,
+    InvalidHandshakeError
 }
 
 pub enum CipherSuite {
@@ -34,6 +36,7 @@ pub enum CipherSuite {
     TLS_AES_128_CCM_8_SHA256 = 0x1305
 }
 
+#[derive(PartialEq)]
 pub enum ContentType {
     InvalidReserved = 0,
     ChangeCipherSpecReserved = 20,
