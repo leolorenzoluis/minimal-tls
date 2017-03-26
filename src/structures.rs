@@ -154,8 +154,8 @@ pub struct Handshake {
 pub struct ClientHello {
     legacy_version : u16, // 0x0303,
     random: Random,
-    legacy_session_id : [u8; 32], // <0..32>
-    cipher_suites : Vec<CipherSuite>,
+    legacy_session_id : Vec<u8>, // <0..32>
+    cipher_suites : Vec<CipherSuite>, // <2..2^16-2>,
     legacy_compression_methods: [u8; 255],
     extensions: Vec<Extension> // <8..2^16-2>
 }
