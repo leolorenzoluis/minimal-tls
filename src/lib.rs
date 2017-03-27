@@ -2,7 +2,7 @@ mod structures;
 
 use std::io::Read;
 use std::io::Write;
-
+use std::iter::Peekable;
 use structures::{Random, ClientHello, CipherSuite, Extension, ContentType, TLSPlaintext, TLSState, TLSError};
 
 // Misc. functions
@@ -140,8 +140,25 @@ impl<'a> TLS_config<'a> {
         }
 	    Ok(ret)
     }
-	
+
 	fn process_extensions(&mut self, data : &[u8]) -> Result<Vec<Extension>, TLSError> {
+
+        let mut ret : Vec<Extension> = Vec::new();
+        let mut iter = data.iter();
+
+        loop {
+            let first = iter.next();
+            if first.is_none() {
+                break
+            }
+            let first = first.unwrap();
+            let second = iter.next().unwrap();
+            ret.push(match ((*first as u16) << 8) | (*second as u16) {
+
+                _ => return Err(TLSError::InvalidHandshakeError)
+            });
+        }
+
 		Err(TLSError::InvalidState)
 	}
 
@@ -220,6 +237,7 @@ impl<'a> TLS_config<'a> {
 			TLSState::Start => {
 				// Try to recieve the ClientHello
 				let clienthello : ClientHello = try!(self.read_clienthello());
+
 				Err(TLSError::InvalidState)
 			},
 			TLSState::RecievedClientHello => {
