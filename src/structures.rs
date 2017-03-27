@@ -161,16 +161,16 @@ pub struct ClientHello {
 }
 
 pub struct ServerHello {
-    version : ProtocolVersion,
-    random : Random,
-    cipher_suite : CipherSuite,
-    extensions : Vec<Extension> // <6..2^16-2>
+    pub version : ProtocolVersion,
+    pub random : Random,
+    pub cipher_suite : CipherSuite,
+    pub extensions : Vec<Extension> // <6..2^16-2>
 }
 
 pub struct HelloRetryRequest {
-    server_version : ProtocolVersion,
-    cipher_suite : CipherSuite,
-    extensions : Vec<Extension> // <2..2^16-1>
+    pub server_version : ProtocolVersion,
+    pub cipher_suite : CipherSuite,
+    pub extensions : Vec<Extension> // <2..2^16-1>
 }
 
 pub enum Extension {
@@ -228,7 +228,7 @@ pub enum PskKeyExchangeMode {
 }
 
 pub struct PskKeyExchangeModes {
-    ke_modes : Vec<PskKeyExchangeMode> // <1..255>
+    pub ke_modes : Vec<PskKeyExchangeMode> // <1..255>
 }
 
 pub struct Empty {}
@@ -240,7 +240,7 @@ pub enum EarlyDataIndicationOptions {
 }
 
 pub struct EarlyDataIndication {
-    value : EarlyDataIndicationOptions
+    pub value : EarlyDataIndicationOptions
 }
 
 pub struct PskIdentity {
@@ -256,16 +256,16 @@ pub enum PreSharedKeyExtensionOptions {
 }
 
 pub struct PreSharedKeyExtension {
-    msg : PreSharedKeyExtensionOptions,
+    pub msg : PreSharedKeyExtensionOptions,
 }
 
 
 pub struct SupportedVersions {
-    versions : Vec<ProtocolVersion>, // <2..254>
+    pub versions : Vec<ProtocolVersion>, // <2..254>
 }
 
 pub struct Cookie {
-    cookie : Vec<u8> // <1..2^16-1>
+    pub cookie : Vec<u8> // <1..2^16-1>
 }
 
 // Should be 2 bytes, u16
@@ -314,43 +314,43 @@ pub enum NamedGroup {
 }
 
 pub struct NamedGroupList {
-    named_group_list : Vec<NamedGroup> // <2..2^16-1>
+    pub named_group_list : Vec<NamedGroup> // <2..2^16-1>
 }
 
 type DistinguishedName = Vec<u8>; // <1..2^16-1>
 
 pub struct CertificateAuthoritiesExtension {
-    authorities : Vec<DistinguishedName> //<3..2^16-1>;
+    pub authorities : Vec<DistinguishedName> //<3..2^16-1>;
 }
 
 pub struct EncryptedExtensions {
-    extensions : Vec<Extension> //<0..2^16-1>;
+    pub extensions : Vec<Extension> //<0..2^16-1>;
 }
 
 pub struct CertificateRequest {
-    certificate_request_context : Vec<u8>, // <0..2^8-1>;
-    extensions : Vec<Extension> //<2..2^16-1>;
+    pub certificate_request_context : Vec<u8>, // <0..2^8-1>;
+    pub extensions : Vec<Extension> //<2..2^16-1>;
 }
 
 pub struct OIDFilter {
-    certificate_extension_oid : Vec<u8>, //<1..2^8-1>;
-    certificate_extension_values : Vec<u8>, //<0..2^16-1>;
+    pub certificate_extension_oid : Vec<u8>, //<1..2^8-1>;
+    pub certificate_extension_values : Vec<u8>, //<0..2^16-1>;
 }
 
 pub struct OIDFilterExtension {
-    filters : Vec<u8>, //<0..2^16-1>;
+    pub filters : Vec<u8>, //<0..2^16-1>;
 }
 
 type ASN1Cert = Vec<u8>; //<1..2^24-1>;
 
 pub struct CertificateEntry {
-    cert_data : ASN1Cert,
-    extensions : Vec<Extension> //<0..2^16-1>;
+    pub cert_data : ASN1Cert,
+    pub extensions : Vec<Extension> //<0..2^16-1>;
 }
 
 pub struct Certificate {
-    certificate_request_context : Vec<u8>, //<0..2^8-1>;
-    certificate_list : Vec<CertificateEntry> //<0..2^24-1>;
+    pub certificate_request_context : Vec<u8>, //<0..2^8-1>;
+    pub certificate_list : Vec<CertificateEntry> //<0..2^24-1>;
 }
 
 pub struct CertificateVerify {
