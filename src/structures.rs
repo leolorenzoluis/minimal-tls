@@ -173,9 +173,17 @@ pub struct HelloRetryRequest {
     extensions : Vec<Extension> // <2..2^16-1>
 }
 
-pub struct Extension {
-    extension_type : ExtensionType,
-    extension_data : Vec<u8> // <0..2^16-1>
+pub enum Extension {
+    SupportedGroups(NamedGroupList),
+    SignatureAlgorithms(SignatureSchemeList),
+    KeyShare(KeyShareEntry),
+    PreSharedKey(PreSharedKeyExtension),
+    EarlyData(EarlyDataIndication),
+    SupportedVersions(SupportedVersions),
+    Cookie(Cookie),
+    PskKeyExchangeModes(PskKeyExchangeModes),
+    CertificateAuthorities(CertificateAuthoritiesExtension),
+    OIDFilters(OIDFilterExtension),
 }
 
 // TODO: We must ensure that this value is be 2 bytes long!
@@ -189,7 +197,7 @@ pub enum ExtensionType {
     Cookie = 44,
     PskKeyExchangeModes = 45,
     CertificateAuthorities = 47,
-    OldFilters = 48,
+    OIDFilters = 48,
 }
 
 pub struct KeyShareEntry {
@@ -253,7 +261,7 @@ pub struct PreSharedKeyExtension {
 
 
 pub struct SupportedVersions {
-    versions : [ProtocolVersion], // <2..254>
+    versions : Vec<ProtocolVersion>, // <2..254>
 }
 
 pub struct Cookie {
@@ -285,7 +293,7 @@ pub enum SignatureScheme {
 
 
 pub struct SignatureSchemeList {
-    supported_signature_algorithms : [SignatureScheme], // <2..2^16-2>
+    supported_signature_algorithms : Vec<SignatureScheme>, // <2..2^16-2>
 }
 
 pub enum NamedGroup {
@@ -306,13 +314,13 @@ pub enum NamedGroup {
 }
 
 pub struct NamedGroupList {
-    named_group_list : [NamedGroup] // <2..2^16-1>
+    named_group_list : Vec<NamedGroup> // <2..2^16-1>
 }
 
 type DistinguishedName = Vec<u8>; // <1..2^16-1>
 
 pub struct CertificateAuthoritiesExtension {
-    authorities : [DistinguishedName] //<3..2^16-1>;
+    authorities : Vec<DistinguishedName> //<3..2^16-1>;
 }
 
 pub struct EncryptedExtensions {

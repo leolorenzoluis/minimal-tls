@@ -1,8 +1,8 @@
 mod structures;
+mod extensions;
 
 use std::io::Read;
 use std::io::Write;
-use std::iter::Peekable;
 use structures::{Random, ClientHello, CipherSuite, Extension, ContentType, TLSPlaintext, TLSState, TLSError};
 
 // Misc. functions
@@ -29,7 +29,6 @@ fn tls_init<'a, R : Read, W : Write>(read : &'a mut R, write : &'a mut W) -> TLS
 #[allow(unused_variables)]
 #[allow(dead_code)]
 impl<'a> TLS_config<'a> {
-
     /*
         Read implements reading directly from the TLSPlaintext streams.
         It will handle retrieving a new TLSPlaintext in the case of fragmentation
@@ -56,9 +55,9 @@ impl<'a> TLS_config<'a> {
             self.recordcache.extend(tlsplaintext.fragment);
         }
 
-        Ok(self.recordcache.remove(0)) 
+        Ok(self.recordcache.remove(0))
     }
-    
+
     fn read_u16(&mut self) -> Result<u16, TLSError> {
         if self.recordcache.len() < 2 {
             // Grab another fragment
@@ -121,7 +120,7 @@ impl<'a> TLS_config<'a> {
 	fn process_ciphersuites(&mut self, data : &[u8]) -> Result<Vec<CipherSuite>, TLSError> {
         let mut ret : Vec<CipherSuite> = Vec::new();
         let mut iter = data.iter();
-    
+
         loop {
             let first = iter.next();
             if first.is_none() {
@@ -146,15 +145,19 @@ impl<'a> TLS_config<'a> {
         let mut ret : Vec<Extension> = Vec::new();
         let mut iter = data.iter();
 
-        loop {
-            let first = iter.next();
-            if first.is_none() {
-                break
-            }
-            let first = first.unwrap();
+        while let Some(first) = iter.next() {
             let second = iter.next().unwrap();
             ret.push(match ((*first as u16) << 8) | (*second as u16) {
-
+    			10 => try!(Extension::parse_supported_groups(&mut iter)),
+    			13 => try!(Extension::parse_signature_algorithms(&mut iter)),
+    			40 => try!(Extension::parse_keyshare(&mut iter)),
+    			41 => try!(Extension::parse_preshared_key(&mut iter)),
+    			42 => try!(Extension::parse_earlydata(&mut iter)),
+    			43 => try!(Extension::parse_supported_versions(&mut iter)),
+    			44 => try!(Extension::parse_cookie(&mut iter)),
+    			45 => try!(Extension::parse_psk_key_exchange_modes(&mut iter)),
+    			47 => try!(Extension::parse_certificate_authorities(&mut iter)),
+    			48 => try!(Extension::parse_oldfilters(&mut iter)),
                 _ => return Err(TLSError::InvalidHandshakeError)
             });
         }
