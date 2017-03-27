@@ -53,16 +53,16 @@ pub struct TLSPlaintext {
 }
 
 pub struct TLSInnerPlaintext {
-    content : Vec<u8>,
-    ctype : ContentType,
-    zeros: Vec<u8> // length_of_padding
+    pub content : Vec<u8>,
+    pub ctype : ContentType,
+    pub zeros: Vec<u8> // length_of_padding
 }
 
 pub struct TLSCiphertext {
-    opaque_type : ContentType, // = ContentType::ApplicationData,
-    legacy_record_version : ProtocolVersion, //= ContentType::TLSv13,
-    length : u16,
-    encrypted_record : Vec<u8> // max length is 'length'
+    pub opaque_type : ContentType, // = ContentType::ApplicationData,
+    pub legacy_record_version : ProtocolVersion, //= ContentType::TLSv13,
+    pub length : u16,
+    pub encrypted_record : Vec<u8> // max length is 'length'
 }
 
 pub enum AlertLevel {
@@ -107,8 +107,8 @@ pub enum AlertDescription {
 }
 
 pub struct Alert {
-    level : AlertLevel,
-    description : AlertDescription
+    pub level : AlertLevel,
+    pub description : AlertDescription
 }
 
 pub enum HandshakeType {
@@ -146,9 +146,9 @@ pub enum HandshakeMessage {
 }
 
 pub struct Handshake {
-    msg_type : HandshakeType,
-    length : u32, // IMPORTANT: This is supposed to be a u24, rust has no u24 so we use u32
-    body : HandshakeMessage
+    pub msg_type : HandshakeType,
+    pub length : u32, // IMPORTANT: This is supposed to be a u24, rust has no u24 so we use u32
+    pub body : HandshakeMessage
 }
 
 pub struct ClientHello {
@@ -201,8 +201,8 @@ pub enum ExtensionType {
 }
 
 pub struct KeyShareEntry {
-    group : NamedGroup,
-    key_exchange : Vec<u8> // <1..2^16-1>
+    pub group : NamedGroup,
+    pub key_exchange : Vec<u8> // <1..2^16-1>
 }
 
 pub struct KeyShare {
@@ -244,8 +244,8 @@ pub struct EarlyDataIndication {
 }
 
 pub struct PskIdentity {
-        identity : Vec<u8>, // <1..2^16-1>
-        obfuscated_ticket_age : u32
+    pub identity : Vec<u8>, // <1..2^16-1>
+    pub obfuscated_ticket_age : u32
 }
 
 type PskBinderEntry = Vec<u8>; // <32..255>
@@ -293,7 +293,7 @@ pub enum SignatureScheme {
 
 
 pub struct SignatureSchemeList {
-    supported_signature_algorithms : Vec<SignatureScheme>, // <2..2^16-2>
+    pub supported_signature_algorithms : Vec<SignatureScheme>, // <2..2^16-2>
 }
 
 pub enum NamedGroup {
@@ -354,19 +354,19 @@ pub struct Certificate {
 }
 
 pub struct CertificateVerify {
-    algorithm : SignatureScheme,
-    signature : Vec<u8> //<0..2^16-1>;
+    pub algorithm : SignatureScheme,
+    pub signature : Vec<u8> //<0..2^16-1>;
 }
 
 pub struct Finished {
-    verify_data : Vec<u8> //[Hash.length];
+    pub verify_data : Vec<u8> //[Hash.length];
 }
 
 pub struct NewSessionTicket {
-    ticket_lifetime : u32,
-    ticket_age_add : u32,
-    ticket : Vec<u8>, //<1..2^16-1>;
-    extensions : Vec<Extension>, //<0..2^16-2>;
+    pub ticket_lifetime : u32,
+    pub ticket_age_add : u32,
+    pub ticket : Vec<u8>, //<1..2^16-1>;
+    pub extensions : Vec<Extension>, //<0..2^16-2>;
 }
 
 pub struct EndOfEarlyData {}
@@ -377,5 +377,5 @@ pub enum KeyUpdateRequest {
 }
 
 pub struct KeyUpdate {
-    request_update : KeyUpdateRequest,
+    pub request_update : KeyUpdateRequest,
 }
