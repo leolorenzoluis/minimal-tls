@@ -235,20 +235,40 @@ impl<'a> TLS_config<'a> {
         })
 	}
 
-	fn transition(&mut self) -> Result<&TLS_config, TLSError> {
+	fn transition(&mut self) -> Result<(), TLSError> {
 		match self.state {
 			TLSState::Start => {
 				// Try to recieve the ClientHello
 				let clienthello : ClientHello = try!(self.read_clienthello());
 
-				Err(TLSError::InvalidState)
+				// We can transition to the next state
+				self.state = TLSState::RecievedClientHello;
+				Ok(())
 			},
 			TLSState::RecievedClientHello => {
 				Err(TLSError::InvalidState)
 			},
-			_ => {
+			TLSState::Negotiated => {
 				Err(TLSError::InvalidState)
-			}
+			},
+			TLSState::WaitEndOfEarlyData => {
+				Err(TLSError::InvalidState)
+			},
+			TLSState::WaitFlight2 => {
+				Err(TLSError::InvalidState)
+			},
+			TLSState::WaitCert => {
+				Err(TLSError::InvalidState)
+			},
+			TLSState::WaitCertificateVerify => {
+				Err(TLSError::InvalidState)
+			},
+			TLSState::WaitFinished => {
+				Err(TLSError::InvalidState)
+			},
+			TLSState::Connected => {
+				Err(TLSError::InvalidState)
+			},
 		}
 	}
 

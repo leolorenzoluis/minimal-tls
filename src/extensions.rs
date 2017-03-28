@@ -52,7 +52,7 @@ impl Extension {
         }
 
 		let mut ret : Vec<SignatureScheme> = Vec::new();
-		for x in 1..(length/2) {
+		for _ in 1..(length/2) {
 
 			let first = iter.next();
 			let second = iter.next();
@@ -109,7 +109,7 @@ impl Extension {
             return Err(TLSError::InvalidHandshakeError)
         }
 		let mut ret : Vec<ProtocolVersion> = Vec::new();
-		for x in 1..(length/2) {
+		for _ in 1..(length/2) {
 
 			let first = iter.next();
 			let second = iter.next();

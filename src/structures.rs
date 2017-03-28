@@ -176,7 +176,7 @@ pub struct HelloRetryRequest {
 pub enum Extension {
     SupportedGroups(NamedGroupList),
     SignatureAlgorithms(SignatureSchemeList),
-    KeyShare(KeyShareEntry),
+    KeyShare(KeyShare),
     PreSharedKey(PreSharedKeyExtension),
     EarlyData(EarlyDataIndication),
     SupportedVersions(SupportedVersions),
