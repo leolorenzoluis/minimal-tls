@@ -226,6 +226,8 @@ impl<'a> TLS_config<'a> {
         }
 
         let mut extensions : Vec<u8> = vec![0; ext_length];
+        // TODO: If there is a pre_shared_key extension, it must be the last
+        // extension in the ClientHello
         try!(self.read(extensions.as_mut_slice()));
 
         Ok(ClientHello{
@@ -238,9 +240,53 @@ impl<'a> TLS_config<'a> {
         })
 	}
 
-	fn negotiate_serverhello(&mut self) -> Result<HandshakeMessage, TLSError> {
+	fn negotiate_ciphersuite(&mut self, clienthello : &ClientHello) -> Result<CipherSuite, TLSError> {
+		// We only support one ciphersuite - TLS_CHACHA20_POLY1305_SHA256
 
-		Err(TLSError::InvalidClientHello)
+		if !clienthello.cipher_suites.contains(&CipherSuite::TLS_CHACHA20_POLY1305_SHA256) {
+			return Err(TLSError::UnsupportedCipherSuite)
+		}
+
+		return Ok(CipherSuite::TLS_CHACHA20_POLY1305_SHA256)
+	}
+
+	// TODO: Implement extension validation logic here
+	// Must have "supported_versions"
+	// Must have either "key_share" or "pre_shared_key"
+	fn validate_extensions(&mut self, clienthello : &ClientHello) -> Result<Vec<Extension>, TLSError> {
+		Err(TLSError::InvalidClientHelloExtensions)
+	}
+
+	// FIXME: Have to look up how to get high quality rng on every platform
+	fn gen_server_random(&mut self) -> Result<[u8; 32], TLSError> {
+		Ok([0; 32])
+	}
+
+	fn negotiate_serverhello(&mut self) -> Result<HandshakeMessage, TLSError> {
+		if let HandshakeMessage::ClientHello(clienthello) = self.hs_message {
+			// Validate the client legacy version
+			if clienthello.legacy_version != 0x0303 {
+				return Err(TLSError::InvalidClientHello)
+			}
+
+			// Choose a cipher suite
+			let ciphersuite = try!(self.negotiate_ciphersuite(&clienthello));
+
+			// Make sure we only have null compression sent
+			if clienthello.legacy_compression_methods.len() != 1 ||
+				clienthello.legacy_compression_methods[0] != 0x00 {
+					return Err(TLSError::InvalidClientHello)
+			}
+
+			// Go through extensions and figure out which replies we need to send
+			let extensions : Vec<Extension> = try!(self.validate_extensions(&clienthello));
+
+			Ok(HandshakeMessage::ServerHello(ServerHello{
+				version : 0x0304, random: try!(self.gen_server_random()),
+				cipher_suite: ciphersuite, extensions : extensions}))
+		} else {
+			Err(TLSError::InvalidClientHello)
+		}
 	}
 
 	fn transition(&mut self) -> Result<(), TLSError> {
@@ -258,7 +304,24 @@ impl<'a> TLS_config<'a> {
 
 				// TODO: Check if this is a ServerHello or a HelloRetryRequest
 				self.hs_message = try!(self.negotiate_serverhello());
-				Err(TLSError::InvalidState)
+
+				match self.hs_message {
+					HandshakeMessage::ServerHello(_) => {
+						// We don't need to do anything except transition state
+						self.state = TLSState::Negotiated
+					},
+					HandshakeMessage::HelloRetryRequest(_) => {
+						// We need to send the HelloRetryRequest
+
+						// We go back to parsing the ClientHello
+						// TODO: We should somehow indicate here that we've already been here
+						// once, so we only allow the HelloRetryRequest to be sent one time
+						self.state = TLSState::Start
+					},
+					_ => return Err(TLSError::InvalidState)
+				}
+
+				Ok(())
 			},
 			TLSState::Negotiated => {
 				Err(TLSError::InvalidState)

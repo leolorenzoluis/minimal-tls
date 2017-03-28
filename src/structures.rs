@@ -26,9 +26,12 @@ pub enum TLSError {
     InvalidMessage,
     ReadError,
     InvalidHandshakeError,
-    InvalidClientHello
+    InvalidClientHello,
+    UnsupportedCipherSuite,
+    InvalidClientHelloExtensions
 }
 
+#[derive(PartialEq)]
 pub enum CipherSuite {
     TLS_AES_128_GCM_SHA256 = 0x1301,
     TLS_AES_256_GCM_SHA384 = 0x1302,
@@ -97,7 +100,7 @@ pub enum AlertDescription {
     InappropriateFallback = 86,
     UserCanceled = 90,
     NoRenegotiationReserved = 100,
-    MissingExtensino = 109,
+    MissingExtension = 109,
     UnsupportedExtension = 110,
     CertificateUnobtainable = 111,
     UnrecognnizedName = 112,
