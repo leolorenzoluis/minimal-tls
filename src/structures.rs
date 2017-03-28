@@ -25,7 +25,8 @@ pub enum TLSError {
     InvalidState,
     InvalidMessage,
     ReadError,
-    InvalidHandshakeError
+    InvalidHandshakeError,
+    InvalidClientHello
 }
 
 pub enum CipherSuite {
@@ -132,6 +133,7 @@ pub enum HandshakeType {
 }
 
 pub enum HandshakeMessage {
+    InvalidMessage,
     ClientHello(ClientHello),
     ServerHello(ServerHello),
     EndOfEarlyData(EndOfEarlyData),

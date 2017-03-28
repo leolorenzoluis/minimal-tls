@@ -3,7 +3,7 @@ mod extensions;
 
 use std::io::Read;
 use std::io::Write;
-use structures::{Random, ClientHello, CipherSuite, Extension, ContentType, TLSPlaintext, TLSState, TLSError};
+use structures::{Random, ClientHello, CipherSuite, Extension, ContentType, HandshakeMessage, ServerHello, TLSPlaintext, TLSState, TLSError};
 
 // Misc. functions
 pub fn bytes_to_u16(bytes : &[u8]) -> u16 {
@@ -16,6 +16,7 @@ pub struct TLS_config<'a> {
 	writer : &'a mut Write,
 
 	state : TLSState,
+	hs_message : HandshakeMessage,
 
 	// Cache any remaining bytes in a TLS record
     ctypecache : ContentType,
@@ -23,7 +24,9 @@ pub struct TLS_config<'a> {
 }
 
 fn tls_init<'a, R : Read, W : Write>(read : &'a mut R, write : &'a mut W) -> TLS_config<'a> {
-	TLS_config{reader : read, writer : write, state : TLSState::Start, ctypecache : ContentType::InvalidReserved, recordcache : Vec::new() }
+	TLS_config{reader : read, writer : write, state : TLSState::Start,
+				hs_message : HandshakeMessage::InvalidMessage,
+				ctypecache : ContentType::InvalidReserved, recordcache : Vec::new() }
 }
 
 #[allow(unused_variables)]
@@ -235,17 +238,26 @@ impl<'a> TLS_config<'a> {
         })
 	}
 
+	fn negotiate_serverhello(&mut self) -> Result<HandshakeMessage, TLSError> {
+
+		Err(TLSError::InvalidClientHello)
+	}
+
 	fn transition(&mut self) -> Result<(), TLSError> {
 		match self.state {
 			TLSState::Start => {
 				// Try to recieve the ClientHello
-				let clienthello : ClientHello = try!(self.read_clienthello());
+				self.hs_message = HandshakeMessage::ClientHello(try!(self.read_clienthello()));
 
 				// We can transition to the next state
 				self.state = TLSState::RecievedClientHello;
 				Ok(())
 			},
 			TLSState::RecievedClientHello => {
+				// We need to evaluate the ClientHello to determine if we want to keep it
+
+				// TODO: Check if this is a ServerHello or a HelloRetryRequest
+				self.hs_message = try!(self.negotiate_serverhello());
 				Err(TLSError::InvalidState)
 			},
 			TLSState::Negotiated => {
