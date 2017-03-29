@@ -336,17 +336,24 @@ impl<'a> TLS_config<'a> {
 			TLSState::WaitFlight2 => {
 				Err(TLSError::InvalidState)
 			},
+
+            /*
+                Because we don't support client certificates, we should
+                never reach these states in our state machine
+            */
 			TLSState::WaitCert => {
 				Err(TLSError::InvalidState)
 			},
 			TLSState::WaitCertificateVerify => {
 				Err(TLSError::InvalidState)
 			},
+
 			TLSState::WaitFinished => {
 				Err(TLSError::InvalidState)
 			},
 			TLSState::Connected => {
-				Err(TLSError::InvalidState)
+                // Nowhere else to go from here
+                Ok(HandshakeMessage::InvalidMessage);
 			},
 		}
 	}
