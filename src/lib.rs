@@ -16,7 +16,6 @@ pub struct TLS_config<'a> {
 	writer : &'a mut Write,
 
 	state : TLSState,
-	hs_message : HandshakeMessage,
 
 	// Cache any remaining bytes in a TLS record
     ctypecache : ContentType,
@@ -25,7 +24,6 @@ pub struct TLS_config<'a> {
 
 fn tls_init<'a, R : Read, W : Write>(read : &'a mut R, write : &'a mut W) -> TLS_config<'a> {
 	TLS_config{reader : read, writer : write, state : TLSState::Start,
-				hs_message : HandshakeMessage::InvalidMessage,
 				ctypecache : ContentType::InvalidReserved, recordcache : Vec::new() }
 }
 
@@ -116,6 +114,11 @@ impl<'a> TLS_config<'a> {
 		// Read the remaining data from the buffer
 		let mut data = Vec::with_capacity(length as usize);
 		try!(self.reader.read_exact(data.as_mut_slice()).or(Err(TLSError::ReadError)));
+
+        /*
+            FIXME: Check if we have received a TLS Alert message here. That should always
+            warrant returning an error to the caller
+        */
 
 		Ok(TLSPlaintext{ctype: contenttype, legacy_record_version: legacy_version, length: length, fragment: data})
 	}
@@ -240,17 +243,17 @@ impl<'a> TLS_config<'a> {
         })
 	}
 
-	fn negotiate_ciphersuite(&mut self, clienthello : &ClientHello) -> Result<CipherSuite, TLSError> {
+	fn negotiate_ciphersuite(&mut self, ciphersuites : &Vec<CipherSuite>) -> Result<CipherSuite, TLSError> {
 		// We only support one ciphersuite - TLS_CHACHA20_POLY1305_SHA256
 
-		if !clienthello.cipher_suites.contains(&CipherSuite::TLS_CHACHA20_POLY1305_SHA256) {
+		if !ciphersuites.contains(&CipherSuite::TLS_CHACHA20_POLY1305_SHA256) {
 			return Err(TLSError::UnsupportedCipherSuite)
 		}
 
 		return Ok(CipherSuite::TLS_CHACHA20_POLY1305_SHA256)
 	}
 
-	// TODO: Implement extension validation logic here
+	// FIXME: Implement extension validation logic here
 	// Must have "supported_versions"
 	// Must have either "key_share" or "pre_shared_key"
 	fn validate_extensions(&mut self, clienthello : &ClientHello) -> Result<Vec<Extension>, TLSError> {
@@ -262,50 +265,51 @@ impl<'a> TLS_config<'a> {
 		Ok([0; 32])
 	}
 
-	fn negotiate_serverhello(&mut self) -> Result<HandshakeMessage, TLSError> {
-		if let HandshakeMessage::ClientHello(clienthello) = self.hs_message {
-			// Validate the client legacy version
-			if clienthello.legacy_version != 0x0303 {
-				return Err(TLSError::InvalidClientHello)
-			}
+	fn negotiate_serverhello(&mut self, clienthello: &ClientHello) -> Result<HandshakeMessage, TLSError> {
+        // Validate the client legacy version
+        if clienthello.legacy_version != 0x0303 {
+            return Err(TLSError::InvalidClientHello)
+        }
 
-			// Choose a cipher suite
-			let ciphersuite = try!(self.negotiate_ciphersuite(&clienthello));
+        // Choose a cipher suite
+        let ciphersuite = try!(self.negotiate_ciphersuite(&clienthello.cipher_suites));
 
-			// Make sure we only have null compression sent
-			if clienthello.legacy_compression_methods.len() != 1 ||
-				clienthello.legacy_compression_methods[0] != 0x00 {
-					return Err(TLSError::InvalidClientHello)
-			}
+        // Make sure we only have null compression sent
+        if clienthello.legacy_compression_methods.len() != 1 ||
+            clienthello.legacy_compression_methods[0] != 0x00 {
+                return Err(TLSError::InvalidClientHello)
+        }
 
-			// Go through extensions and figure out which replies we need to send
-			let extensions : Vec<Extension> = try!(self.validate_extensions(&clienthello));
+        // Go through extensions and figure out which replies we need to send
+        // TODO: It's possible that we decide to return a HelloRetryRequest here,
+        // so we should handle that
+        let extensions : Vec<Extension> = try!(self.validate_extensions(&clienthello));
 
-			Ok(HandshakeMessage::ServerHello(ServerHello{
-				version : 0x0304, random: try!(self.gen_server_random()),
-				cipher_suite: ciphersuite, extensions : extensions}))
-		} else {
-			Err(TLSError::InvalidClientHello)
-		}
+        Ok(HandshakeMessage::ServerHello(ServerHello{
+            version : 0x0304, random: try!(self.gen_server_random()),
+            cipher_suite: ciphersuite, extensions : extensions}))
 	}
 
-	fn transition(&mut self) -> Result<(), TLSError> {
+	fn transition(&mut self, hs_message : HandshakeMessage) -> Result<HandshakeMessage, TLSError> {
 		match self.state {
 			TLSState::Start => {
 				// Try to recieve the ClientHello
-				self.hs_message = HandshakeMessage::ClientHello(try!(self.read_clienthello()));
+				let hs_message = HandshakeMessage::ClientHello(try!(self.read_clienthello()));
 
 				// We can transition to the next state
 				self.state = TLSState::RecievedClientHello;
-				Ok(())
+				Ok(hs_message)
 			},
 			TLSState::RecievedClientHello => {
 				// We need to evaluate the ClientHello to determine if we want to keep it
+                let hs_message = if let HandshakeMessage::ClientHello(clienthello) = hs_message {
+                    try!(self.negotiate_serverhello(&clienthello))
+                } else {
+                    return Err(TLSError::InvalidState)
+                };
 
-				// TODO: Check if this is a ServerHello or a HelloRetryRequest
-				self.hs_message = try!(self.negotiate_serverhello());
-
-				match self.hs_message {
+				// Check if this is a ServerHello or a HelloRetryRequest
+				match hs_message {
 					HandshakeMessage::ServerHello(_) => {
 						// We don't need to do anything except transition state
 						self.state = TLSState::Negotiated
@@ -321,7 +325,7 @@ impl<'a> TLS_config<'a> {
 					_ => return Err(TLSError::InvalidState)
 				}
 
-				Ok(())
+				Ok(hs_message)
 			},
 			TLSState::Negotiated => {
 				Err(TLSError::InvalidState)
@@ -358,13 +362,15 @@ impl<'a> TLS_config<'a> {
 			We want to transition through the TLS state machine until we
 			encounter an error, or complete the handshake
 		*/
+        let mut hs_message = HandshakeMessage::InvalidMessage;
 		loop {
-			match self.transition() {
+			match self.transition(hs_message) {
 				Err(e) => return Err(e),
-				_ => {
+				Ok(x) => {
 					if self.state == TLSState::Connected {
 						break
 					}
+                    hs_message = x
 				}
 			}
 		};
