@@ -22,7 +22,7 @@ pub struct TLS_config<'a> {
 	recordcache: Vec<u8>
 }
 
-fn tls_init<'a, R : Read, W : Write>(read : &'a mut R, write : &'a mut W) -> TLS_config<'a> {
+pub fn tls_init<'a, R : Read, W : Write>(read : &'a mut R, write : &'a mut W) -> TLS_config<'a> {
 	TLS_config{reader : read, writer : write, state : TLSState::Start,
 				ctypecache : ContentType::InvalidReserved, recordcache : Vec::new() }
 }
@@ -397,9 +397,3 @@ impl<'a> TLS_config<'a> {
 // TLS_recieve -> recieves plaintext
 // TLS_end -> closes the connection
 
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn it_works() {
-    }
-}
