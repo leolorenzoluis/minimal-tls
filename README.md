@@ -9,7 +9,7 @@ We plan to create a "minimal" implementation of TLS with the goal of 95% support
 
 #### Building
 
-You will need to have both ```libclang``` and ```libsodium``` installed on your system. On Debian flavoured machines, you can still libclang from the clang package (```sudo apt-get install clang```). You can download the latest version of libsodium from source and manually make/make install it.
+You will need to have both ```libclang``` and ```libsodium``` installed on your system. On Debian flavoured machines, you can install libclang from the clang package (```sudo apt-get install clang```). You can download the latest version of libsodium from source and manually make/make install it.
 
 ```
 Download the latest tarball from: https://download.libsodium.org/libsodium/releases/
