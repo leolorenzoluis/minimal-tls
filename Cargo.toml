@@ -2,6 +2,7 @@
 name = "minimal-tls"
 version = "0.1.0"
 authors = ["Cyrus Malekpour <cmalekpour@gmail.com>", "Tianyi Jin <freddie.jin22@gmail.com>", "Daniel Saha <drs5ma@virginia.edu>", "Bhuvanesh Murali"]
+build = "build.rs"
 
 [build-dependencies]
 bindgen = "0.22.1"

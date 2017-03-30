@@ -7,6 +7,21 @@ In recent years, TLS implementations have been targeted with memory corruption o
 #### Goal
 We plan to create a "minimal" implementation of TLS with the goal of 95% support of browser clients. To accomplish this, we will identify the least possible set of server features and cipher suites we can support to meet this goal, with a strong focus on security. We will implement only a few key TLS extensions (ex: SNI, OCSP) with fail-safes for other features. The project will be written in the Rust programming language to provide good performance while removing the risk of memory corruption attacks.
 
+#### Building
+
+You will need to have both ```libclang``` and ```libsodium``` installed on your system. On Debian flavoured machines, you can still libclang from the clang package (```sudo apt-get install clang```). You can download the latest version of libsodium from source and manually make/make install it.
+
+```
+Download the latest tarball from: https://download.libsodium.org/libsodium/releases/
+Navigate into the directory
+./configure
+make
+sudo make install
+sudo ldconfig
+```
+
+Afterwards, ```cargo``` should work for building this project.
+
 #### Resources
 
 - [Amazon s2n](https://github.com/awslabs/s2n): a security-focused implementation of TLS/SSL from Amazon Security.

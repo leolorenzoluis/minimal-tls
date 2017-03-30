@@ -353,7 +353,7 @@ impl<'a> TLS_config<'a> {
 			},
 			TLSState::Connected => {
                 // Nowhere else to go from here
-                Ok(HandshakeMessage::InvalidMessage);
+                Ok(HandshakeMessage::InvalidMessage)
 			},
 		}
 	}
