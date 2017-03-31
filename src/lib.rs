@@ -1,8 +1,10 @@
 mod structures;
+mod serialization;
 mod extensions;
 
 use std::io::Read;
 use std::io::Write;
+use serialization::TLSToBytes;
 use structures::{Random, ClientHello, CipherSuite, Extension, ContentType, HandshakeMessage, ServerHello, TLSPlaintext, TLSState, TLSError};
 
 // Misc. functions
@@ -17,6 +19,9 @@ pub struct TLS_config<'a> {
 
 	state : TLSState,
 
+	// Boolean if we have sent a HelloRetryRequest
+	sent_hello_retry : bool,
+
 	// Cache any remaining bytes in a TLS record
     ctypecache : ContentType,
 	recordcache: Vec<u8>
@@ -24,6 +29,7 @@ pub struct TLS_config<'a> {
 
 pub fn tls_init<'a, R : Read, W : Write>(read : &'a mut R, write : &'a mut W) -> TLS_config<'a> {
 	TLS_config{reader : read, writer : write, state : TLSState::Start,
+				sent_hello_retry : false,
 				ctypecache : ContentType::InvalidReserved, recordcache : Vec::new() }
 }
 
@@ -82,6 +88,15 @@ impl<'a> TLS_config<'a> {
         self.ctypecache = tlsplaintext.ctype;
         self.recordcache.extend(tlsplaintext.fragment);
         Ok(())
+    }
+
+    fn create_tlsplaintext(&mut self, contenttype: ContentType, data: &Vec<u8>) -> Result<TLSPlaintext, TLSError> {
+    	Err(TLSError::InvalidMessage)
+    }
+
+    fn send_tlsplaintext(&mut self, tlsplaintext : TLSPlaintext) -> Result<(), TLSError> {
+    	let data : Vec<u8> = tlsplaintext.to_bytes();
+    	self.writer.write_all(data.as_slice()).or(Err(TLSError::ReadError))
     }
 
 	fn get_next_tlsplaintext(&mut self) -> Result<TLSPlaintext, TLSError> {
@@ -218,6 +233,7 @@ impl<'a> TLS_config<'a> {
             return Err(TLSError::InvalidHandshakeError)
         }
 
+        // 0x00 is null compression
         if try!(self.read_u8()) != 0x00 {
             return Err(TLSError::InvalidHandshakeError)
         }
@@ -290,8 +306,34 @@ impl<'a> TLS_config<'a> {
             cipher_suite: ciphersuite, extensions : extensions}))
 	}
 
+	fn send_message(&mut self, messagequeue : Vec<HandshakeMessage>) -> Result<(), TLSError> {
+		if messagequeue.len() > 0 {
+			let mut data : Vec<u8> = Vec::new();
+
+			// Loop over all messages and serialize them
+			for x in &messagequeue {
+				let ret = x.to_bytes();
+				if data.len() + ret.len() > 16384 {
+					// Flush the existing messages, then continue
+					let tlsplaintext = try!(self.create_tlsplaintext(ContentType::Handshake, &data));
+					try!(self.send_tlsplaintext(tlsplaintext));
+				}
+				data.extend(ret)
+			}
+
+			// Flush any remaining messages
+			let tlsplaintext = try!(self.create_tlsplaintext(ContentType::Handshake, &data));
+			try!(self.send_tlsplaintext(tlsplaintext));
+		}
+		Ok(())
+	}
+
 	fn transition(&mut self, hs_message : HandshakeMessage) -> Result<HandshakeMessage, TLSError> {
-		match self.state {
+
+		// This queue represents any server messages we need to drain after calling transition
+		let mut messagequeue : Vec<HandshakeMessage> = Vec::new();
+
+		let result = match self.state {
 			TLSState::Start => {
 				// Try to recieve the ClientHello
 				let hs_message = HandshakeMessage::ClientHello(try!(self.read_clienthello()));
@@ -312,20 +354,26 @@ impl<'a> TLS_config<'a> {
 				match hs_message {
 					HandshakeMessage::ServerHello(_) => {
 						// We don't need to do anything except transition state
-						self.state = TLSState::Negotiated
+						self.state = TLSState::Negotiated;
+						Ok(hs_message)
 					},
 					HandshakeMessage::HelloRetryRequest(_) => {
-						// We need to send the HelloRetryRequest
+						if self.sent_hello_retry {
+							/*
+								We have already sent a HelloRetryRequest once, so
+								abort to avoid DoS loop
+							*/
+							return Err(TLSError::InvalidState)
+						}
+						self.sent_hello_retry = true;
 
-						// We go back to parsing the ClientHello
-						// TODO: We should somehow indicate here that we've already been here
-						// once, so we only allow the HelloRetryRequest to be sent one time
-						self.state = TLSState::Start
+						// Queue the HelloRetryRequest to send back to the client
+						messagequeue.push(hs_message);
+						self.state = TLSState::Start;
+						Ok(HandshakeMessage::InvalidMessage)
 					},
 					_ => return Err(TLSError::InvalidState)
 				}
-
-				Ok(hs_message)
 			},
 			TLSState::Negotiated => {
 				Err(TLSError::InvalidState)
@@ -355,7 +403,12 @@ impl<'a> TLS_config<'a> {
                 // Nowhere else to go from here
                 Ok(HandshakeMessage::InvalidMessage)
 			},
-		}
+		};
+
+		// Check if we need to send any messages
+		try!(self.send_message(messagequeue));
+
+		result
 	}
 
 	pub fn tls_start(&mut self) -> Result<u8, TLSError>{
