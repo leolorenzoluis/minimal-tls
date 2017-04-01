@@ -8,3 +8,4 @@ build = "build.rs"
 bindgen = "0.22.1"
 
 [dependencies]
+byteorder = "1"

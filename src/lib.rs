@@ -411,7 +411,7 @@ impl<'a> TLS_config<'a> {
 		result
 	}
 
-	pub fn tls_start(&mut self) -> Result<u8, TLSError>{
+	pub fn tls_start(&mut self) -> Result<(), TLSError> {
 
 		// Ensure we are in the "start" state
 		if self.state != TLSState::Start {
@@ -440,7 +440,7 @@ impl<'a> TLS_config<'a> {
 			return Err(TLSError::InvalidState)
 		}
 
-		Ok(0)
+		Ok(())
 	}
 }
 
