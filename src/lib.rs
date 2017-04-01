@@ -376,13 +376,30 @@ impl<'a> TLS_config<'a> {
 				}
 			},
 			TLSState::Negotiated => {
-				Err(TLSError::InvalidState)
+
+                /*
+                    We need to send the ServerHello, EncryptedExtensions,
+                    Certificate, CertificateVerify, and Finished messages
+                */
+
+                // FIXME: Generate and send messages
+
+                self.state = TLSState::WaitFlight2;
+				Ok(HandshakeMessage::InvalidMessage)
 			},
+
+            /*
+                This state is only used for 0-RTT communications, which we disable
+                because they don't provide forward secrecy and can lead to replay attacks
+            */ 
 			TLSState::WaitEndOfEarlyData => {
 				Err(TLSError::InvalidState)
 			},
+
 			TLSState::WaitFlight2 => {
-				Err(TLSError::InvalidState)
+                // No 0-RTT, so nothing do to here
+                self.state = TLSState::WaitFinished;
+				Ok(HandshakeMessage::InvalidMessage)
 			},
 
             /*
@@ -396,8 +413,11 @@ impl<'a> TLS_config<'a> {
 				Err(TLSError::InvalidState)
 			},
 
+
 			TLSState::WaitFinished => {
-				Err(TLSError::InvalidState)
+                // We're done! Advance to the connected state
+                self.state = TLSState::Connected;
+                Ok(HandshakeMessage::InvalidMessage)
 			},
 			TLSState::Connected => {
                 // Nowhere else to go from here
