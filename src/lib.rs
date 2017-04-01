@@ -95,7 +95,7 @@ impl<'a> TLS_config<'a> {
     }
 
     fn send_tlsplaintext(&mut self, tlsplaintext : TLSPlaintext) -> Result<(), TLSError> {
-    	let data : Vec<u8> = tlsplaintext.to_bytes();
+    	let data : Vec<u8> = (&tlsplaintext).as_bytes();
     	self.writer.write_all(data.as_slice()).or(Err(TLSError::ReadError))
     }
 
@@ -312,7 +312,7 @@ impl<'a> TLS_config<'a> {
 
 			// Loop over all messages and serialize them
 			for x in &messagequeue {
-				let ret = x.to_bytes();
+				let ret = x.as_bytes();
 				if data.len() + ret.len() > 16384 {
 					// Flush the existing messages, then continue
 					let tlsplaintext = try!(self.create_tlsplaintext(ContentType::Handshake, &data));
@@ -391,7 +391,7 @@ impl<'a> TLS_config<'a> {
             /*
                 This state is only used for 0-RTT communications, which we disable
                 because they don't provide forward secrecy and can lead to replay attacks
-            */ 
+            */
 			TLSState::WaitEndOfEarlyData => {
 				Err(TLSError::InvalidState)
 			},

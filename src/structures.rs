@@ -42,7 +42,7 @@ pub enum CipherSuite {
     TLS_AES_128_CCM_8_SHA256 = 0x1305
 }
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Copy, Clone)]
 pub enum ContentType {
     InvalidReserved = 0,
     ChangeCipherSpecReserved = 20,
