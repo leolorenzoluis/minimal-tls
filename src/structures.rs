@@ -276,6 +276,7 @@ pub struct Cookie {
 }
 
 // Should be 2 bytes, u16
+#[allow(non_camel_case_types)]
 pub enum SignatureScheme {
     /* RSASSA-PKCS1-v1_5 algorithms */
     rsa_pkcs1_sha1 = 0x0201,
@@ -303,6 +304,7 @@ pub struct SignatureSchemeList {
     pub supported_signature_algorithms : Vec<SignatureScheme>, // <2..2^16-2>
 }
 
+#[allow(non_camel_case_types)]
 pub enum NamedGroup {
     /* Elliptic Curve Groups (ECDHE) */
     secp256r1 = 0x0017,
